@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>แปลงไฟล์ทุกแบบ — PDF / Excel / Word / รูปภาพ</title>
+<link rel="stylesheet" href="css/style.css" />
+
+<!-- pdf.js: render & read PDF content -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<!-- pdf-lib: create / edit / merge / split PDFs -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<!-- SheetJS: write XLSX workbooks -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<!-- docx: build Word documents -->
+<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.js"></script>
+<!-- JSZip: bundle multiple outputs into a .zip -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<!-- mammoth: read DOCX content for Word -> PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.8.0/mammoth.browser.min.js"></script>
+<!-- jsPDF (+ autotable): build PDFs with an embedded Thai-capable font -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<!-- Tesseract.js: in-browser OCR for scanned PDFs -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="logo" id="logo">
+    <span class="mark">⇄</span>
+    <span>แปลงไฟล์ทุกแบบ</span>
+  </div>
+  <span class="subtitle">แปลง PDF · Excel · Word · รูปภาพ ทำงานในเบราว์เซอร์ ไม่ต้องอัปโหลดขึ้นเซิร์ฟเวอร์</span>
+  <div class="header-spacer"></div>
+  <button class="back-btn" id="back-btn" type="button">← กลับหน้าหลัก</button>
+</header>
+
+<main>
+  <div id="home-view" class="view">
+    <div class="hero">
+      <h1>ILoveMyJob</h1>
+      <h2>เลือกเครื่องมือแปลงไฟล์ที่ต้องการ</h2>
+      <p>อัปโหลดไฟล์ แล้วแปลง แก้ไข หรือจัดการหน้าได้ทันที ทุกอย่างประมวลผลในเครื่องของคุณเอง ไฟล์จะไม่ถูกส่งออกไปที่ใด</p>
+    </div>
+  </div>
+
+  <div id="tool-view" class="view">
+    <div id="tool-container"></div>
+  </div>
+</main>
+
+<footer class="app-footer">ทำงานฝั่งเบราว์เซอร์ทั้งหมด — ไฟล์ของคุณไม่ถูกอัปโหลดไปที่เซิร์ฟเวอร์ใดๆ</footer>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

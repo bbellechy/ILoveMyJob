@@ -61,17 +61,19 @@ function groupRowIntoCells(rowItems, colGapThreshold) {
   return cells.filter(c => c.text.trim() !== "");
 }
 
-function clusterColumns(allCells, colTolerance) {
-  const xs = allCells.map(c => c.x).sort((a, b) => a - b);
-  const clusters = [];
-  for (const x of xs) {
-    let cluster = clusters.find(c => Math.abs(c.center - x) < colTolerance);
-    if (!cluster) { cluster = { center: x, xs: [] }; clusters.push(cluster); }
-    cluster.xs.push(x);
-    cluster.center = cluster.xs.reduce((a, b) => a + b, 0) / cluster.xs.length;
+// Most frequent value in a list of counts; ties broken toward the larger
+// column count (a more informative table shape).
+function mostCommonCellCount(counts) {
+  const freq = new Map();
+  for (const c of counts) freq.set(c, (freq.get(c) || 0) + 1);
+  let best = null, bestFreq = 0;
+  for (const [value, freqCount] of freq) {
+    if (freqCount > bestFreq || (freqCount === bestFreq && value > best)) {
+      best = value;
+      bestFreq = freqCount;
+    }
   }
-  clusters.sort((a, b) => a.center - b.center);
-  return clusters.map(c => c.center);
+  return best;
 }
 
 // Returns a 2D array of strings (rows of cells) for a single PDF page.
@@ -81,21 +83,54 @@ export function extractPageTable(textContent) {
 
   const heights = items.map(it => it.height || Math.abs(it.transform[3]) || 10).filter(h => h > 0);
   const baseSize = median(heights) || 10;
-  const colGapThreshold = Math.max(6, baseSize * 1.1);
-  const colTolerance = Math.max(8, baseSize * 1.5);
+  // A genuine column gap can be as narrow as a tightly-set number/unit pair
+  // (a few points), while an ordinary inter-word space in flowing prose is
+  // usually under ~3pt regardless of font size. This stays low (floored,
+  // not scaled up, for normal body text sizes) so it catches tight column
+  // gaps without mistaking prose word-spacing for a column break; it only
+  // scales up for unusually large text where a real word-space would also
+  // be wider than that floor.
+  const colGapThreshold = Math.max(3, baseSize * 0.15);
 
   const rows = clusterRows(items);
   const rowCells = rows.map(r => groupRowIntoCells(r.items, colGapThreshold)).filter(c => c.length);
   if (!rowCells.length) return [];
 
   // Only rows with 2+ cells look like actual table rows — a single flowing
-  // paragraph line would otherwise bridge unrelated columns together and
-  // collapse the whole page into one giant column via transitive chaining.
-  const tabularCells = rowCells.filter(c => c.length >= 2).flat();
-  const columnCenters = clusterColumns(tabularCells.length ? tabularCells : rowCells.flat(), colTolerance);
+  // paragraph line stays as one cell rather than getting shredded across
+  // whatever columns its words happen to land nearest to.
+  const tabularCounts = rowCells.filter(c => c.length >= 2).map(c => c.length);
+  if (!tabularCounts.length) {
+    return rowCells.map(cells => [cells.map(c => c.text).join(" ")]);
+  }
+
+  // The table's column count is simply the shape most rows share. Using
+  // each cell's *position within its row* (rather than clustering x
+  // coordinates across rows) sidesteps two things that defeat x-proximity
+  // clustering: columns set close enough together that no single distance
+  // threshold can both keep them apart AND still tolerate another column's
+  // own natural jitter, and center-aligned columns whose text start drifts
+  // a lot from row to row depending on content length.
+  const columnCount = mostCommonCellCount(tabularCounts);
+  const centerSums = new Array(columnCount).fill(0);
+  const centerCounts = new Array(columnCount).fill(0);
+  for (const cells of rowCells) {
+    if (cells.length === columnCount) {
+      cells.forEach((c, i) => { centerSums[i] += c.x; centerCounts[i]++; });
+    }
+  }
+  const columnCenters = centerSums.map((sum, i) => (centerCounts[i] ? sum / centerCounts[i] : i));
 
   return rowCells.map(cells => {
-    const line = new Array(columnCenters.length).fill("");
+    if (cells.length === columnCount) {
+      return cells.map(c => c.text);
+    }
+    if (cells.length < 2) {
+      return [cells.map(c => c.text).join(" ")];
+    }
+    // An irregular row (e.g. a totals line missing its leading columns) —
+    // place each cell in whichever confirmed column it sits nearest to.
+    const line = new Array(columnCount).fill("");
     for (const cell of cells) {
       let bestIdx = 0, bestDist = Infinity;
       columnCenters.forEach((cx, idx) => {
@@ -104,8 +139,7 @@ export function extractPageTable(textContent) {
       });
       line[bestIdx] = line[bestIdx] ? line[bestIdx] + " " + cell.text : cell.text;
     }
-    // Trim fully-empty trailing columns for this row.
     while (line.length && line[line.length - 1] === "") line.pop();
     return line;
-  }).filter(row => row.length > 0);
+  });
 }
